@@ -1,9 +1,24 @@
 import chromadb
 from chromadb.config import Settings
+from chromadb.storage import StorageContext, ChromaVectorStore, SimpleIndexStore
+from chromadb.index import load_index_from_storage
 import openai
 import yaml
 from time import time, sleep
 from uuid import uuid4
+import os
+
+# Your code
+db_client = chromadb.Client(Settings(chroma_db_impl="duckdb+parquet", persist_directory=os.environ['CHROMADB_PATH']))
+db_collection = db_client.get_collection(name=os.environ['CHROMADB_COLLECTION'])
+
+# Get query engine
+storage_context = StorageContext.from_defaults(
+    vector_store=ChromaVectorStore(chroma_collection=db_collection),
+    index_store=SimpleIndexStore.from_persist_dir()
+)
+index = load_index_from_storage(storage_context=storage_context)
+query_engine = index.as_query_engine()
 
 
 def save_yaml(filepath, data):
@@ -53,12 +68,12 @@ def chatbot(messages, model="gpt-4", temperature=0):
 
 
 
+# In the main function, replace chroma_client and collection with db_client and db_collection
 if __name__ == '__main__':
     # instantiate ChromaDB
     persist_directory = "chromadb"
-    chroma_client = chromadb.Client(Settings(persist_directory=persist_directory,chroma_db_impl="duckdb+parquet",))
-    collection = chroma_client.get_or_create_collection(name="knowledge_base")
-
+    db_client = chromadb.Client(Settings(persist_directory=persist_directory,chroma_db_impl="duckdb+parquet",))
+    db_collection = db_client.get_or_create_collection(name="knowledge_base")
 
     # instantiate chatbot
     openai.api_key = open_file('key_openai.txt')
